@@ -1,0 +1,341 @@
+---
+title: "Phyliseq_analysis"
+output: html_document
+---
+
+###Install devtools and qiime2R 
+
+```{r}
+if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}
+devtools::install_github("jbisanz/qiime2R")
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(qiime2R)
+require(phyloseq)
+require(readr)
+require(csv)
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(tidyr)
+require(dada2)
+theme_set(theme_bw())
+```
+
+### Create metadata object to USEARCH phyloseq objects
+
+```{r}
+sdata <- as.csv("./sample-metadata.csv", sep = ";", row.names = 1, header = TRUE, check.names = TRUE, strindsAsFactor = TRUE)
+```
+
+```{r}
+sdata <- sdata %>%
+  column_to_rownames(var = "SampleID")
+sdata$visit <- factor(sdata$visit, labels = c("1","2","3"))
+```
+
+```{r}
+samdata = sample_data(sdata)
+```
+
+### Import DADA2 phyloseq object, which was created earlier 
+
+```{r}
+DADA2 <- readRDS("./DADA2.rds") #path to DADA2.rds file
+```
+
+### Cteate QIIme2-Deblur phyloseq object
+
+```{r}
+Deblur <- qza_to_phyloseq(
+    features="./table.qza", #path to table.qza file
+    tree="./rooted-tree.qza", #path to rooted-tree.qza file
+    "./taxonomy.qza", #path to taxonomy.qza file
+    metadata = "./sample-metadata.tsv" #path to metadata file
+    )
+```
+
+## Usearch piplines
+
+### UNOISE3 phyloseq
+
+```{r}
+unoise_rep = Biostrings::readDNAStringSet("./zotus.fa") #path to zotus.fa file from UNOISE3 pipline
+```
+
+```{r}
+unoise_TREE <- read_tree("./unoise3.tree") #path to phylogenetic tree - "unoise3.tree" file from UNOISE3 pipline
+```
+
+```{r}
+unoise_seq.tab <- read.delim("./zotutable.txt") #path to zotutable.txt file from UNOISE3 pipline
+unoise_seq.tab <- data.frame(unoise_seq.tab[,-1], row.names=unoise_seq.tab[, 1])
+```
+
+```{r}
+unoise_tax.table <- read.delim("./unoise3_taxa.txt", header = FALSE) #path to unoise3_taxa file from UNOISE3 pipline
+```
+
+```{r}
+unoise_tax.table <- unoise_tax.table %>%
+  select(V1, V4) %>%
+  separate(V4, c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = ",") %>%
+  mutate(Domain = gsub("d:", "", Domain),
+         Phylum = gsub("p:", "", Phylum),
+         Class = gsub("c:", "", Class),
+         Order = gsub("o:", "", Order),
+         Family = gsub("f:", "", Family),
+         Genus = gsub("g:", "", Genus),
+         Species = gsub("s:", "", Species))
+
+```
+
+```{r}
+unoise_tax.table <- data.frame(unoise_tax.table[,-1], row.names=unoise_tax.table[, 1])
+```
+
+```{r}
+Unoise3 <- phyloseq(otu_table(unoise_seq.tab, taxa_are_rows=TRUE),
+                        tax_table(as.matrix(unoise_tax.table)),
+                        unoise_rep,
+                        unoise_TREE, sample_data(samdata))
+```
+
+#### UPARSE  phyloseq
+
+```{r}
+Uparse = Biostrings::readDNAStringSet("./otus.fa") #path to metadata file from UPARSE pipline
+```
+
+```{r}
+Uparse_TREE <- read_tree("./otus.tree") #path to phylogenetic tree "otus.tree" file from UPARSE pipline
+```
+
+```{r}
+Uparse_seq.tab <- read.delim("./otutable.txt") #path to otutable.txt file from UPARSE pipline
+Uparse_seq.tab <- data.frame(Uparse_seq.tab[,-1], row.names=Uparse_seq.tab[, 1])
+```
+
+```{r}
+Uparse_tax.table <- read.delim("./reads_taxa.txt", header = FALSE) #path to reads_taxa.txt file from UPARSE pipline
+```
+
+```{r}
+Uparse_tax.table <- Uparse_tax.table %>%
+  select(V1, V4) %>%
+  separate(V4, c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = ",") %>%
+  mutate(Domain = gsub("d:", "", Domain),
+         Phylum = gsub("p:", "", Phylum),
+         Class = gsub("c:", "", Class),
+         Order = gsub("o:", "", Order),
+         Family = gsub("f:", "", Family),
+         Genus = gsub("g:", "", Genus),
+         Species = gsub("s:", "", Species))
+
+```
+
+```{r}
+Uparse_tax.table <- data.frame(Uparse_tax.table[,-1], row.names=Uparse_tax.table[, 1])
+```
+
+```{r}
+Uparse <- phyloseq(otu_table(Uparse_seq.tab, taxa_are_rows=TRUE),
+                        tax_table(as.matrix(Uparse_tax.table)),
+                        Uparse_rep,
+                        Uparse_TREE, sample_data(samdata))
+```
+
+I want to copmpaire only healthy and obese patients, so i need to take away reads that contain other information about this peoples. Finaly namber of reds is 77.
+
+```{r}
+Deblur <- subset_samples(Deblur, visit == "1")
+DADA2<- subset_samples(DADA2, visit == "1")
+Unoise3 <- subset_samples(Unoise3, visit == "1")
+Uparse <- subset_samples(Uparse, visit == "1")
+```
+
+### Summary statistics 
+
+Number of Phylum:
+
+```{r message=FALSE, warning=FALSE}
+ntaxa(tax_glom(Uparse, "Phylum"))
+ntaxa(tax_glom(Unoise3, "Phylum"))
+ntaxa(tax_glom(DADA2, "Phylum"))
+ntaxa(tax_glom(Deblur, "Phylum"))
+```
+
+Number of Class:
+
+```{r message=FALSE, warning=FALSE}
+ntaxa(tax_glom(Uparse, "Class"))
+ntaxa(tax_glom(Unoise3, "Class"))
+ntaxa(tax_glom(DADA2, "Class"))
+ntaxa(tax_glom(Deblur, "Class"))
+```
+
+Number of Order:
+
+```{r message=FALSE, warning=FALSE}
+ntaxa(tax_glom(Uparse, "Order"))
+ntaxa(tax_glom(Unoise3, "Order"))
+ntaxa(tax_glom(DADA2, "Order"))
+ntaxa(tax_glom(Deblur, "Order"))
+```
+
+Number of Family:
+
+```{r message=FALSE, warning=FALSE}
+ntaxa(tax_glom(Uparse, "Family"))
+ntaxa(tax_glom(Unoise3, "Family"))
+ntaxa(tax_glom(DADA2, "Family"))
+ntaxa(tax_glom(Deblur, "Family"))
+```
+
+Number of Genus:
+
+```{r message=FALSE, warning=FALSE}
+ntaxa(tax_glom(Uparse, "Genus"))
+ntaxa(tax_glom(Unoise3, "Genus"))
+ntaxa(tax_glom(DADA2, "Genus"))
+ntaxa(tax_glom(Deblur, "Genus"))
+```
+
+### Number of NA in each phylogenetic levels 
+
+```{r}
+table(tax_table(Uparse)[, "Phylum"], exclude = NULL)
+table(tax_table(Unoise3)[, "Phylum"], exclude = NULL)
+table(tax_table(DADA2)[, "Phylum"], exclude = NULL)
+table(tax_table(Deblur)[, "Phylum"], exclude = NULL)
+```
+
+```{r}
+table(tax_table(Uparse)[, "Class"], exclude = NULL)
+table(tax_table(Unoise3)[, "Class"], exclude = NULL)
+table(tax_table(DADA2)[, "Class"], exclude = NULL)
+table(tax_table(Deblur)[, "Class"], exclude = NULL)
+```
+
+```{r}
+table(tax_table(Uparse)[, "Order"], exclude = NULL)
+table(tax_table(Unoise3)[, "Order"], exclude = NULL)
+table(tax_table(DADA2)[, "Order"], exclude = NULL)
+table(tax_table(Deblur)[, "Order"], exclude = NULL)
+```
+
+```{r}
+table(tax_table(Uparse)[, "Family"], exclude = NULL)
+table(tax_table(Unoise3)[, "Family"], exclude = NULL)
+table(tax_table(DADA2)[, "Family"], exclude = NULL)
+table(tax_table(Deblur)[, "Family"], exclude = NULL)
+```
+
+```{r}
+table(tax_table(Uparse)[, "Genus"], exclude = NULL)
+table(tax_table(Unoise3)[, "Genus"], exclude = NULL)
+table(tax_table(DADA2)[, "Genus"], exclude = NULL)
+table(tax_table(Deblur)[, "Genus"], exclude = NULL)
+```
+
+### Taxonomy:
+
+```{r, message=FALSE, warning=FALSE}
+plot_bar(tax_glom(Uparse,taxrank="Phylum", NArm=TRUE), fill="Phylum", 
+         title = "Taxonomic composition, Usearch-Uparse") + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 30)) 
+plot_bar(tax_glom(Unoise3,taxrank="Phylum", NArm=TRUE), fill="Phylum", 
+         title = "Taxonomic composition, Usearch-Unoise3") + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 30)) 
+plot_bar(tax_glom(DADA2,taxrank="Phylum", NArm=TRUE), fill="Phylum", 
+         title = "Taxonomic composition, DADA2") + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 30)) 
+plot_bar(tax_glom(eblur,taxrank="Phylum", NArm=TRUE), fill="Phylum", 
+         title = "Taxonomic composition, Qiime2-Deblur") + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 30)) 
+```
+
+### Alpha-diversity 
+
+```{r, message=FALSE, warning=FALSE}
+plot_richness(Uparse,  measures = c("Observed", "Chao1", "Shannon", "Simpson"), 
+              x = "category",  color = "category",title = "Usearch-Uparse pipeline") + 
+  geom_boxplot(alpha = 0.1, lwd=1)  + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 40)) 
+plot_richness(Unoise3,  measures = c("Observed", "Chao1", "Shannon", "Simpson"), 
+              x = "category", color = "category", title = "Alpha Diversity for Usearch-Unoise3") + 
+  geom_boxplot(alpha = 0.1, lwd=1)  + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 40))
+plot_richness(Deblur,  measures = c("Observed", "Chao1", "Shannon", "Simpson"), 
+              x = "category", color = "category", title = "Alpha Diversity for Qiime2-Deblur") + 
+  geom_boxplot(alpha = 0.1, lwd=1)  + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 40))
+plot_richness(DADA2, measures = c("Observed", "Chao1", "Shannon", "Simpson"), 
+              x = "category", color = "category",title = "DADA2 pipeline") + 
+  geom_boxplot(alpha = 0.1, lwd=1)  + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 40))
+
+```
+
+### Wilcox test to compare two groups for aplha-diversity parameters
+
+```{r, message=FALSE, warning=FALSE}
+#Observed alpha-diversity
+wilcox.test((estimate_richness(subset_samples(DADA2, category == "Healthy"))$Observed), (estimate_richness(subset_samples(DADA2, category == "Obesity"))$Observed))
+wilcox.test((estimate_richness(subset_samples(Uparse, category == "Healthy"))$Observed), (estimate_richness(subset_samples(Uparse, category == "Obesity"))$Observed))
+wilcox.test((estimate_richness(subset_samples(Unoise3, category == "Healthy"))$Observed), (estimate_richness(subset_samples(Unoise3, category == "Obesity"))$Observed))
+wilcox.test((estimate_richness(subset_samples(Deblur, category == "Healthy"))$Observed), (estimate_richness(subset_samples(Deblur, category == "Obesity"))$Observed))
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Chao1 alpha-diversity
+wilcox.test((estimate_richness(subset_samples(DADA2, category == "Healthy"))$Chao1), (estimate_richness(subset_samples(DADA2, category == "Obesity"))$Chao1))
+wilcox.test((estimate_richness(subset_samples(Uparse, category == "Healthy"))$Chao1), (estimate_richness(subset_samples(Uparse, category == "Obesity"))$Chao1))
+wilcox.test((estimate_richness(subset_samples(Unoise3, category == "Healthy"))$Chao1), (estimate_richness(subset_samples(Unoise3, category == "Obesity"))$Chao1))
+wilcox.test((estimate_richness(subset_samples(Deblur, category == "Healthy"))$Chao1), (estimate_richness(subset_samples(Deblur, category == "Obesity"))$Chao1))
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Shannon alpha-diversity
+wilcox.test((estimate_richness(subset_samples(DADA2, category == "Healthy"))$Shannon), (estimate_richness(subset_samples(DADA2, category == "Obesity"))$Shannon))
+wilcox.test((estimate_richness(subset_samples(Uparse, category == "Healthy"))$Shannon), (estimate_richness(subset_samples(Uparse, category == "Obesity"))$Shannon))
+wilcox.test((estimate_richness(subset_samples(Unoise3, category == "Healthy"))$Shannon), (estimate_richness(subset_samples(Unoise3, category == "Obesity"))$Shannon))
+wilcox.test((estimate_richness(subset_samples(Deblur, category == "Healthy"))$Shannon), (estimate_richness(subset_samples(Deblur, category == "Obesity"))$Shannon))
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Simpson alpha-diversity
+wilcox.test((estimate_richness(subset_samples(DADA2, category == "Healthy"))$Simpson), (estimate_richness(subset_samples(DADA2, category == "Obesity"))$Simpson))
+wilcox.test((estimate_richness(subset_samples(Uparse, category == "Healthy"))$Simpson), (estimate_richness(subset_samples(Uparse, category == "Obesity"))$Simpson))
+wilcox.test((estimate_richness(subset_samples(Unoise3, category == "Healthy"))$Simpson), (estimate_richness(subset_samples(Unoise3, category == "Obesity"))$Simpson))
+wilcox.test((estimate_richness(subset_samples(Deblur, category == "Healthy"))$Simpson), (estimate_richness(subset_samples(Deblur, category == "Obesity"))$Simpson))
+```
+
+### Bray-curtis beta-diversity
+
+```{r}
+Uparse.ord = ordinate(Uparse, method = "PCoA", distance = "bray")
+plot_ordination(Uparse, Uparse.ord, "samples", color = "category", 
+                title = "Usearch-Uparse pipeline") + geom_point(size = 3) + 
+  stat_ellipse(aes(fill = category), geom = "polygon",level=0.95,alpha=0.2, linetype = 2) + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 35))
+
+Unoise.ord = ordinate(Unoise3, method = "PCoA", distance = "bray")
+plot_ordination(Unoise3, Unoise.ord, "samples", color = "category", 
+                title = "Usearch-Unoise3 pipeline") + geom_point(size = 3) + 
+  stat_ellipse(aes(fill = category), geom = "polygon",level=0.95,alpha=0.2, linetype = 2) + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 35))
+
+DADA2.ord = ordinate(DADA2, method = "PCoA", distance = "bray")
+plot_ordination(DADA2, DADA2.ord, "samples", color = "category", 
+                title = "DADA2 pipeline") + geom_point(size = 3) + 
+  stat_ellipse(aes(fill = category), geom = "polygon",level=0.95,alpha=0.2, linetype = 2) + 
+  theme(text = element_text(size = 20), plot.title = element_text(size = 35))
+
+Deblur.ord = ordinate(Deblur, method = "PCoA", distance = "bray")
+plot_ordination(Deblur, Deblur.ord, "samples", color = "category", 
+                title = "Qiime2-Deblur pipeline") + geom_point(size = 3) + 
+  stat_ellipse(aes(fill = category), geom = "polygon",level=0.95,alpha=0.2, linetype = 2) +
+  theme(text = element_text(size = 20), plot.title = element_text(size = 35))
+```
