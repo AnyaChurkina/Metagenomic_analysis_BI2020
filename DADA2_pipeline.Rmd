@@ -185,14 +185,16 @@ fitGTR <- optim.pml(fitGTR, model="GTR", optInv=TRUE, optGamma=TRUE,
 
 ```{r}
 sdata <- as.csv("./sample-metadata.csv", sep = ";", row.names = 1, header = TRUE, check.names = TRUE, strindsAsFactor = TRUE)
-head(sdata)
 ```
 
 ```{r}
 sdata <- sdata %>%
   column_to_rownames(var = "SampleID")
 sdata$visit <- factor(sdata$visit, labels = c("1","2","3"))
-head(sdata)
+```
+
+```{r}
+samdata = sample_data(sdata)
 ```
 
 ### Create a phyloseq object
