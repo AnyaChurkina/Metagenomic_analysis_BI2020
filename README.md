@@ -30,5 +30,9 @@ R-packages:
 * tidyverse version 1.3.0
 * tidyr version 1.1.2
 
-In this project, good reproducibility of all methods for determining taxonomy at the phylum and class levels, as well as beta diversity (Bray-Curtis PCoA) was found, however, the number of taxonomic units in the OTU method is less than in the ASV methods at all phylogenetic levels. Qiime2-Deblur pipeline contained the minimum number of "unrecognized" taxa, and the Usearch-Unoise3 pipeline contained the maximum number of "unrecognized" taxa reaching ~ 45% of the initial number of taxa at the Genus level. In the DADA2 pipeline, the maximum number of taxa at the levels: Type, Class, Order was determined, which was also confirmed by the presence of a significant ancestor of the alpha diversity indices obtained as a result of analysis using this pipeline.
+In this project, good reproducibility of all methods for determining taxonomy at the phylum and class levels, as well as beta diversity (Bray-Curtis PCoA) was found, however, the number of taxonomic units in the OTU method is less than in the ASV methods at all phylogenetic levels. 
+![Taxonomic composition](https://drive.google.com/uc?export=view&id=1M4USdIhMS3pbBl3pVGqIedEf2EPElHK7)
+![Beta-diversity](https://drive.google.com/uc?export=view&id=1OqAyEw6w6IiXrmgO7gT1rJlKDcY02zHm)
+Qiime2-Deblur pipeline contained the minimum number of "unrecognized" taxa, and the Usearch-Unoise3 pipeline contained the maximum number of "unrecognized" taxa reaching ~ 45% of the initial number of taxa at the Genus level. In the DADA2 pipeline, the maximum number of taxa at the levels: Type, Class, Order was determined, which was also confirmed by the presence of a significant ancestor of the alpha diversity indices obtained as a result of analysis using this pipeline.
+![Taxa number](https://drive.google.com/uc?export=view&id=1kIjZFYl_chJHRT5VgT_a-DETPJ6r6dMF)
 Based on the results obtained, it can be assumed that ASV methods (such as DADA2 or Qiime2-Deblur) are the most preferred in the analysis of metagenomic data.
