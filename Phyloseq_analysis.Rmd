@@ -10,9 +10,18 @@ if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}
 devtools::install_github("jbisanz/qiime2R")
 ```
 
+###Install phyloseq with BiocManager
+
+```{r}
+if(!requireNamespace("BiocManager")){
+  install.packages("BiocManager")
+}
+BiocManager::install("phyloseq")
+```
+
 ```{r, message=FALSE, warning=FALSE}
 library(qiime2R)
-require(phyloseq)
+library(phyloseq)
 require(readr)
 require(csv)
 require(ggplot2)
