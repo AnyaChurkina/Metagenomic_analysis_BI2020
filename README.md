@@ -13,9 +13,19 @@ Goals of the project:
 * comparative analysis of taxonomic composition, alpha- and beta-diversity:
 
 This project was performed with:
-* USEARCH  version 11.0.667 32-bit on Linux 8Gb RAM;
-* Qiime2-Deblur version 2020.08 on Mac OS 8Gb RAM;
-* DADA2 version 1.16 on Mac OS 8Gb RAM;
-* Reference database: Silva 138 99% OTUs from 515F/806R region of sequences; 
+* USEARCH  version 11.0.667 32-bit on Linux 8Gb RAM
+* Qiime2-Deblur version 2020.08 on Mac OS 8Gb RAM
+* DADA2 version 1.14.1 on Mac OS 8Gb RAM
 * R version 3.6.3
-* RStudio version 1.3.1073;
+* RStudio version 1.3.1073
+* Reference database: Silva 138 99% OTUs from 515F/806R region of sequences
+
+R-packages:
+* phyloseq version 1.30.0
+* qiime2R version 0.99.35
+* DADA2 version 1.14.1
+* ggplot2 version 3.3.2
+* csv version 0.5.9
+* dplyr version 1.0.2
+* tidyverse version 1.3.0
+* tidyr version 1.1.2
